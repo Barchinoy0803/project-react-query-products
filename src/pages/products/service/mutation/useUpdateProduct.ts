@@ -5,7 +5,7 @@ interface ProductsEditT {
   name: string;
   id?: string;
   categoryId: string;
-  colorIds: string;
+  colorIds: string[];
   count: number;
   price: number;
   img: string;

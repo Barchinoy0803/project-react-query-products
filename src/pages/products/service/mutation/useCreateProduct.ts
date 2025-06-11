@@ -5,7 +5,7 @@ type FieldType = {
   name: string;
   categoryId: string;
   price: number;
-  colorIds: string;
+  colorIds: string[];
   count: number;
   img: string;
 };

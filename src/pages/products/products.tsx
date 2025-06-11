@@ -106,7 +106,7 @@ export const Products = () => {
       <Modal footer={false} onCancel={close2} open={isOpen2}>
         <ProductForm defaultValue={initialData} closeModal={close2} />
       </Modal>
-      <Table<dataSource> dataSource={dataSource} columns={columns} />;
+      <Table<dataSource> dataSource={dataSource} columns={columns} />
     </div>
   );
 };

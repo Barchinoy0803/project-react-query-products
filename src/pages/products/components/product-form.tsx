@@ -12,7 +12,7 @@ type FieldType = {
   name: string;
   categoryId: string;
   price: number;
-  colorIds: string;
+  colorIds: string[];
   count: number;
   img: string;
 };
@@ -21,11 +21,11 @@ interface dataSource {
   name?: string;
   dataIndex?: string;
   category?: string;
-  color?: string;
-  price?: string;
+  colors?: string;
+  price?: number;
   key?: string;
   count?: number;
-  img?: string
+  img?: string;
 }
 
 interface Props {
@@ -34,88 +34,81 @@ interface Props {
 }
 
 export const ProductForm = ({ closeModal, defaultValue }: Props) => {
-  const { data } = useGetCategories();
-  const { data: color } = useGetColors();
+  const { data: categoryData } = useGetCategories();
+  const { data: colorData } = useGetColors();
   const [form] = Form.useForm();
 
   const { mutate, isPending } = useCreateProduct();
   const { mutate: editProduct, isPending: isPending2 } = useUpdateProduct();
 
-  const clinet = useQueryClient();
+  const client = useQueryClient();
 
-  const onFinish: FormProps<FieldType>["onFinish"] = (data) => {
+  const onFinish: FormProps<FieldType>["onFinish"] = (formData) => {
+    const payload = {
+      name: formData.name,
+      categoryId: formData.categoryId,
+      price: +formData.price,
+      colorIds: formData.colorIds,
+      count: +formData.count,
+      img: "asjdgjgjagfgfja",
+    };
+
     if (defaultValue) {
-      return editProduct(
-        { name: data.name, id: defaultValue.key, price: +data.price, count: +data.count, img: "asjdgjgjagfgfja", colorIds: data.colorIds, categoryId: data.categoryId },
+      editProduct(
+        { ...payload, id: defaultValue.key },
         {
           onSuccess: () => {
-            clinet.invalidateQueries({ queryKey: ["products"] });
+            client.invalidateQueries({ queryKey: ["products"] });
             closeModal();
           },
         }
       );
-    }
-    mutate(
-      { name: data.name, categoryId: data.categoryId, price: +data.price, colorIds: data.colorIds, count: +data.count, img: "asjdgjgjagfgfja" },
-      {
+    } else {
+      mutate(payload, {
         onSuccess: () => {
-          clinet.invalidateQueries({ queryKey: ["products"] });
+          client.invalidateQueries({ queryKey: ["products"] });
           closeModal();
           form.resetFields();
         },
         onError: (error) => {
           form.setFields([{ name: "name", errors: [error.message] }]);
         },
-      }
-    );
+      });
+    }
   };
 
   useEffect(() => {
-    if (defaultValue) {
-      form.setFields([
-        {
-          name: "name",
-          value: defaultValue.name,
-        },
-        {
-          name: "categoryId",
-          value: defaultValue.category,
-        },
-        {
-          name: "colorIds",
-          value: defaultValue.color,
-        },
-        {
-          name: "price",
-          value: defaultValue.price,
-        },
-        {
-          name: "count",
-          value: defaultValue.count,
-        },
+    if (defaultValue && categoryData?.data && colorData?.data) {
+      const categoryId = categoryData.data.find((cat: any) => cat.name === defaultValue.category)?.id;
+      const colorIds = colorData.data
+        .filter((col: any) => defaultValue.colors?.split(',').includes(col.name))
+        .map((col: any) => col.id);
+
+        console.log(colorIds)
+
+        form.setFields([
+        { name: "name", value: defaultValue.name },
+        { name: "categoryId", value: categoryId },
+        { name: "colorIds", value: colorIds },
+        { name: "price", value: defaultValue.price },
+        { name: "count", value: defaultValue.count },
       ]);
     }
-  }, [defaultValue]);
+  }, [defaultValue, categoryData, colorData]);
 
   const categoryList = useMemo(() => {
-    if (data) {
-      return data?.data?.map((item: any) => ({
-        value: item.id,
-        label: <span>{item.name}</span>,
-      }));
-    }
-    return []
-  }, [data])
+    return categoryData?.data?.map((item: any) => ({
+      value: item.id,
+      label: <span>{item.name}</span>,
+    })) || [];
+  }, [categoryData]);
 
   const colorList = useMemo(() => {
-    if (data) {
-      return color?.data?.map((item: any) => ({
-        value: item.id,
-        label: <span>{item.name}</span>,
-      }));
-    }
-    return []
-  }, [data])
+    return colorData?.data?.map((item: any) => ({
+      value: item.id,
+      label: <span>{item.name}</span>,
+    })) || [];
+  }, [colorData]);
 
   return (
     <Form
@@ -123,7 +116,7 @@ export const ProductForm = ({ closeModal, defaultValue }: Props) => {
       name="basic"
       layout="vertical"
       labelCol={{ span: 8 }}
-      wrapperCol={{ span: 16 }}
+      wrapperCol={{ span: 18 }}
       style={{ width: 600, margin: "0 auto" }}
       onFinish={onFinish}
     >
@@ -138,9 +131,9 @@ export const ProductForm = ({ closeModal, defaultValue }: Props) => {
       <Form.Item<FieldType>
         label="Price"
         name="price"
-        rules={[{ required: true, message: "Please input product name!" }]}
+        rules={[{ required: true, message: "Please input product price!" }]}
       >
-        <Input />
+        <Input type="number" />
       </Form.Item>
 
       <Form.Item<FieldType>
@@ -148,32 +141,23 @@ export const ProductForm = ({ closeModal, defaultValue }: Props) => {
         name="count"
         rules={[{ required: true, message: "Please input product count!" }]}
       >
-        <Input />
+        <Input type="number" />
       </Form.Item>
 
       <Form.Item<FieldType>
         label="Category"
         name="categoryId"
-        rules={[{ required: defaultValue ? false : true, message: "Please input category!" }]}
+        rules={[{ required: !defaultValue, message: "Please select a category!" }]}
       >
-        <Select
-          disabled={defaultValue ? true : false}
-          placeholder="Category"
-          options={categoryList}
-        />
+        <Select placeholder="Select Category" options={categoryList} />
       </Form.Item>
 
       <Form.Item<FieldType>
         label="Color"
         name="colorIds"
-        rules={[{ required: defaultValue ? false : true, message: "Please input product color!" }]}
+        rules={[{ required: !defaultValue, message: "Please select colors!" }]}
       >
-        <Select
-          mode="multiple"
-          disabled={defaultValue ? true : false}
-          placeholder="Color"
-          options={colorList}
-        />
+        <Select mode="multiple" placeholder="Select Colors" options={colorList} />
       </Form.Item>
 
       <Button

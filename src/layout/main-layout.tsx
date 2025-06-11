@@ -21,7 +21,7 @@ export const MainLayout: React.FC = () => {
   
   const token = loadState("token");
   if (!token) {
-    return <Navigate to={"/"} replace />;
+    return <Navigate to={"/"} replace />
   }
 
   return (
